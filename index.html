@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CO2 Forest Atlas</title>
+<meta name="description" content="Explore forest suitability and CO2 context under current and 2040 climate conditions.">
+<meta property="og:title" content="CO2 Forest Atlas">
+<meta property="og:description" content="Explore forest suitability and CO2 context under current and 2040 climate conditions.">
+<meta property="og:image" content="assets/logo.png">
+<meta property="og:url" content="">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="assets/logo.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;650;720&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+</head>
+<body>
+<div id="map"></div>
+
+<header class="bar">
+  <div class="brand" role="button" tabindex="0" style="cursor:pointer">
+    <span class="brand-mark">CO2</span>
+    <span>Forest Atlas</span>
+  </div>
+  <div class="search">
+    <input id="geo-input" type="search" placeholder="Search a city or place" autocomplete="off" spellcheck="false">
+    <ul id="geo-results" hidden></ul>
+  </div>
+  <button id="draw-btn" title="Draw an area to analyze">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="4 3"/></svg>
+    <span id="draw-label">Draw area</span>
+  </button>
+  <button id="radar-btn" title="Find plantable land" hidden>
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="7"/><path d="m21 21-5-5"/><path d="M10.5 13.5V9.8c0-1.8 1.4-3.3 3.2-3.3-.1 1.9-1.5 3.3-3.2 3.3zm0 0c0-1.5-1.2-2.7-2.7-2.7 0 1.5 1.2 2.7 2.7 2.7z" fill="currentColor" stroke="none"/></svg>
+    <span id="radar-label"></span>
+  </button>
+  <button id="import-btn" title="Import area" hidden>
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 11v6"/><path d="m9 14 3 3 3-3"/></svg>
+    <span id="import-label"></span>
+  </button>
+  <input id="import-input" type="file" accept=".geojson,.json,.kml,.zip" hidden>
+  <button id="lang-btn" title="Idioma / Language"></button>
+  <div id="langmenu" hidden></div>
+</header>
+
+<section id="atlas-home">
+  <div class="home-copy">
+    <div class="eyebrow">CO2 Forest Atlas</div>
+    <h1>Konumu seç. Karbon ve iklim dengesini gör.</h1>
+    <p>Bir yer aradığında analiz doğrudan başlar. İstersen hazır bölgelerden birini aç, istersen kendi alanını çiz.</p>
+  </div>
+  <div class="quick-places" aria-label="Hazır bölge analizleri">
+    <span class="quick-label">Hızlı keşif</span>
+    <button type="button" data-quick-place data-lat="41.173" data-lng="28.960" data-zoom="12"><b>Belgrad Ormanı</b><small>Karadeniz geçişi</small></button>
+    <button type="button" data-quick-place data-lat="52.470" data-lng="13.205" data-zoom="12"><b>Berlin Grunewald</b><small>Ilıman kent ormanı</small></button>
+    <button type="button" data-quick-place data-lat="-23.350" data-lng="-45.100" data-zoom="11"><b>Serra do Mar</b><small>Atlantik yağmur ormanı</small></button>
+  </div>
+  <div class="home-actions">
+    <button id="home-draw" type="button">Alan seç</button>
+  </div>
+  <div class="home-note">Her hızlı görünüm yaklaşık 1 km² için uygun türleri, 20 yıllık CO2e kapasitesini ve 2040 dayanıklılığını birlikte hesaplar.</div>
+</section>
+
+<div id="about" hidden></div>
+
+<div id="proj" hidden></div>
+
+<div id="hint" hidden>Click to drop points &middot; right-click, double-click or click the first point to close &middot; Esc cancels</div>
+
+<aside id="panel" hidden>
+  <div id="panel-resize" role="separator" aria-orientation="vertical" aria-label="Analiz panelini yeniden boyutlandır"></div>
+  <div id="panel-content"></div>
+</aside>
+<button id="panel-restore" type="button" hidden>Analizi aç</button>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
