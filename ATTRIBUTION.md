@@ -24,10 +24,8 @@ Atmospheric CO2 concentration history should come from NOAA Global Monitoring La
 
 - https://gml.noaa.gov/ccgg/trends/data.html
 
-## Replantio
+## Software Notice
 
-This project is built on the MIT-licensed Replantio repository:
-
-- https://github.com/gdavidss/replantio
-
-Replantio copyright remains with Guilherme David. The MIT license text is preserved in `LICENSE`.
+Portions of the software were adapted from the MIT-licensed
+[Replantio](https://github.com/gdavidss/replantio) project. Its copyright and
+license notice are preserved in `LICENSE`.

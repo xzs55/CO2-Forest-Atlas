@@ -1,92 +1,90 @@
 # CO2 Forest Atlas
 
-This project is built on the MIT-licensed Replantio codebase (`gdavidss/replantio`) and narrows the product toward climate resilience screening.
+An interactive geospatial screening tool for exploring tree-species climate
+suitability, 2040 resilience and carbon context for a selected area.
 
-The core question is: species that look suitable under the 2015-2024 climate baseline, do they remain suitable in a 2036-2045 climate outlook?
+CO2 Forest Atlas combines current climate observations, a single-model climate
+outlook, species envelopes and historical country emissions in one map-based
+workflow. It is an exploratory decision-support prototype, not a planting
+prescription, carbon-credit calculator or site-level forecast.
 
-This is not a planting recommendation, forestry prescription, carbon-credit tool, or formal offset calculator. It shows CO2 context for screening, not claim-grade carbon accounting.
+## What It Does
+
+- Draw or open an area anywhere on the map.
+- Compare species suitability today and under a 2036-2045 climate outlook.
+- Inspect native-range evidence and the main climate limitation for each tree.
+- Compare 20-year CO2e sensitivity ranges by tree, hectare and selected area.
+- Explore annual CO2 emissions history for 204 countries from 1950 to 2024.
+- Review illustrative trend, managed-decline and net-zero pathways.
+
+Carbon results are deliberately shown as low-to-high screening ranges. Their
+current confidence is `low · class-level` because the model uses growth classes,
+generic allometry and fixed stand assumptions rather than local measurements.
+
+## Preview
+
+![CO2 Forest Atlas interface](assets/preview.png)
+
+## How It Works
+
+1. Turf calculates the selected polygon's area and centroid.
+2. Open-Meteo and SoilGrids provide climate, terrain and soil context.
+3. The scoring engine evaluates FAO EcoCrop-style suitability envelopes.
+4. The same engine compares the 2015-2024 baseline with a 2036-2045 outlook.
+5. Growth and biomass models produce transparent CO2e sensitivity ranges.
+6. D3 presents local and global emissions history separately from tree storage.
+
+The detailed assumptions, range factors and status thresholds are documented in
+[docs/methodology.md](docs/methodology.md).
 
 ## Run Locally
+
+Requirements: Node.js 20 or newer.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/`.
+Open `http://127.0.0.1:5173/`. The application runs locally in the browser and
+does not require a backend, database, account, API key or hosted server.
 
-## Verify a Release
+## Test and Build
 
 ```bash
 npm test
 npm run build
 ```
 
-The production files are generated in `dist/`. The app remains a static browser
-application: no backend, database, environment variables, or API keys are
-required for the MVP.
+The production files are generated in `dist/`. This repository does not include
+an automatic public-web deployment workflow.
 
-## Publish
+## Data and Models
 
-### GitHub Pages
+- Current climate: Open-Meteo Historical Weather API, 2015-2024.
+- Climate outlook: Open-Meteo Climate API, 2036-2045, `MRI_AGCM3_2_S`.
+- Species envelopes: FAO EcoCrop-derived species parameters.
+- Soil context: ISRIC SoilGrids.
+- Native-range evidence: WCVP and digitized Little/USGS ranges where available.
+- Emissions history: Our World in Data / Global Carbon Budget.
+- Atmospheric CO2 context: NOAA Global Monitoring Laboratory.
 
-The repository includes `.github/workflows/deploy-pages.yml`. Every push to
-`main` runs the checks, builds the app, and deploys `dist/` to GitHub Pages.
+See [ATTRIBUTION.md](ATTRIBUTION.md) for complete data and software notices.
 
-For the first deployment, open the repository's **Settings > Pages** and set
-**Source** to **GitHub Actions**. The published URL will then appear in the
-workflow summary and the repository's **Deployments** section.
+## Limitations
 
-`vite.config.js` uses relative production asset paths, so the build works under
-a repository path such as `https://<username>.github.io/CO2-Forest-Atlas/` as
-well as on a custom domain.
+- Future suitability currently uses one climate model.
+- Carbon bands are sensitivity envelopes, not statistical confidence intervals.
+- Species-level field measurements and regional allometry are not yet included.
+- Results should be validated by local ecological and forestry expertise.
 
-### Vercel
+## Roadmap
 
-Import the GitHub repository in Vercel and keep the detected Vite defaults:
+The next priorities are regional carbon confidence, saved site passports,
+comparison views, canopy/risk map modes and user-provided field evidence. See
+[docs/product-roadmap.md](docs/product-roadmap.md).
 
-- Build command: `npm run build`
-- Output directory: `dist`
-- Install command: `npm install`
+## License
 
-No secrets or environment variables are needed. Open-Meteo, SoilGrids and the
-map layers are requested directly by the browser at runtime.
-
-## Data Sources
-
-- Current baseline: Open-Meteo Historical Weather API, 2015-01-01 to 2024-12-31.
-- 2040 outlook: Open-Meteo Climate API, 2036-01-01 to 2045-12-31.
-- Climate model: `MRI_AGCM3_2_S`.
-- Daily variables: `temperature_2m_mean`, `temperature_2m_min`, `precipitation_sum`.
-- Species suitability model and data structure: adapted from Replantio's EcoCrop-based scoring engine.
-- CO2 emissions history: Our World in Data annual CO2 emissions chart, sourced from Global Carbon Budget.
-
-Atmospheric CO2 concentration history is a different dataset. Use NOAA GML Trends in CO2 for ppm concentration records; use OWID / Global Carbon Budget for annual emissions by country and world.
-
-## Product Direction
-
-The UI is intentionally moving away from Replantio's restoration marketplace feel. CO2 Forest Atlas focuses on:
-
-- Current suitability vs. 2040 climate resilience.
-- Area-level 20-year CO2e screening estimates.
-- Low-to-high CO2e sensitivity ranges with explicit class-level confidence.
-- Historical CO2 emissions context for the selected country and the world.
-- Simple future pathway sketches from the latest emissions data point.
-
-The future emissions lines are not official forecasts. They are lightweight interpretive paths: recent trend, managed decline, and net-zero by 2050.
-
-Tree carbon bands are transparent screening envelopes, not statistical
-confidence intervals or offset-grade accounting. See `docs/methodology.md` for
-the assumptions and range factors.
-
-## Technical Notes
-
-- D3 renders the CO2 history and pathway chart.
-- Turf calculates polygon area and centroid from GeoJSON geometry.
-- Replantio's EcoCrop-based suitability engine remains the core scoring reference.
-
-The UI must label future values as an exploratory projection from one climate model, not a forecast.
-
-## Related Work
-
-Replantio is the base application for this MVP. Its MIT license is preserved in `LICENSE`; Replantio copyright remains with Guilherme David.
+MIT. See [LICENSE](LICENSE). Third-party notices remain in
+[ATTRIBUTION.md](ATTRIBUTION.md).
