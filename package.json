@@ -1,12 +1,18 @@
 {
   "name": "co2-forest-atlas",
+  "description": "Map-based forest suitability and carbon context explorer",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "node test/check.mjs",
+    "check": "npm test && npm run build",
     "data:co2": "node scripts/update-co2-history.mjs"
   },
   "dependencies": {

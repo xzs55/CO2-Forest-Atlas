@@ -1,6 +1,6 @@
 # Methodology
 
-The MVP extends Replantio's static browser architecture and EcoCrop-based scoring engine with a clearer climate-resilience comparison. It compares two 10-year windows for a selected point:
+The application compares two 10-year climate windows for a selected point:
 
 - Current baseline: 2015-2024 daily climate data.
 - 2040 outlook: 2036-2045 daily climate model projection.
@@ -12,7 +12,7 @@ Both windows are transformed into the same climate summary:
 - Annual precipitation: average yearly precipitation across the period.
 - Summer precipitation: average June-July-August precipitation across the period.
 
-Replantio's existing suitability engine scores species with trapezoidal EcoCrop envelopes and most-limiting-factor combination. The 2040 outlook reuses that same scoring engine against projected climate normals, then shows the future score and score delta beside the current baseline score.
+The suitability model scores species with trapezoidal EcoCrop envelopes and a most-limiting-factor combination. The 2040 outlook applies the same model to projected climate normals, then shows the future score and score delta beside the current baseline score.
 
 Status labels are derived from the difference between future and current total score, expressed as percentage points:
 
@@ -21,7 +21,7 @@ Status labels are derived from the difference between future and current total s
 - `declining`: difference from -10 to -24.
 - `not_recommended`: difference <= -25, or a future score of 0.
 
-Future values use a single climate model, `MRI_AGCM3_2_S`, and must be labeled as exploratory projection output, not a site-level forecast.
+Future values use a single climate model, `MRI_AGCM3_2_S`, and are presented as scenario-based model output for comparison with the historical baseline.
 
 ## CO2 Context
 

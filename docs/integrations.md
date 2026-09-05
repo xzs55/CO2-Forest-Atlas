@@ -10,7 +10,7 @@ Use for carbon history and future pathway charts.
 
 Why it fits:
 
-- Small enough for this prototype.
+- Small enough for the current browser application.
 - Makes the CO2 story visible instead of burying it in text.
 - Works in the current static browser app.
 
@@ -45,7 +45,7 @@ Use for real future emissions pathways.
 Best UI use:
 
 - Replace the current illustrative future lines with selected SSP pathways.
-- Keep only 3 paths in the MVP: low, middle, high.
+- Keep only 3 paths in the first release: low, middle, high.
 - Cache a small static CSV subset instead of querying a heavy API at runtime.
 
 ### Global Forest Watch
@@ -54,13 +54,13 @@ Use for existing forest carbon and tree-cover context.
 
 Best UI use:
 
-- Add an optional `Existing forest carbon` layer after MVP.
+- Add an optional `Existing forest carbon` layer in a later release.
 - Use it to explain baseline biomass, not species-level planting carbon.
 
 Risk:
 
 - Some GFW API workflows require API keys or geostore setup.
-- It can make the MVP feel like a GIS product before the core CO2/species story is clear.
+- It can make the application feel like a general GIS product before the core CO2/species story is clear.
 
 ### i-Tree / OpenTreeMap Style Species Factors
 
@@ -69,7 +69,7 @@ Use for more species-specific urban tree carbon factors if a clean open dataset 
 Best UI use:
 
 - Add a confidence badge: `class-level`, `genus-level`, or `species-level`.
-- Keep Replantio growth classes as fallback.
+- Keep the current growth classes as fallback.
 
 Risk:
 

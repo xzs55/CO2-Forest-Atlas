@@ -7,7 +7,7 @@ This project uses Open-Meteo APIs for historical and projected daily climate dat
 - Historical Weather API: https://open-meteo.com/
 - Climate API: https://open-meteo.com/en/docs/climate-api
 
-Prototype usage should be re-checked against Open-Meteo's current terms before commercial release or high-traffic deployment.
+Open-Meteo's current terms should be reviewed before commercial or high-traffic deployment.
 
 ## CMIP6 / HighResMIP
 

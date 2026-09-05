@@ -560,12 +560,6 @@ body.panel-open #atlas-home { display: none; }
 }
 @keyframes lshimmer { to { background-position: -200% 0; } }
 
-/* "Where to get it" rows */
-.getrows .sk.gfree { color: var(--accent); font-weight: 600; }
-.getrows a { color: var(--text); text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.18); }
-.getrows a:hover { border-bottom-color: var(--accent); color: var(--accent); }
-.getrows .chk { color: var(--faint); font-size: .85em; }
-
 /* first-run invitation */
 #intro {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: 26px; z-index: 940;

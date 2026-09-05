@@ -5,8 +5,8 @@ suitability, 2040 resilience and carbon context for a selected area.
 
 CO2 Forest Atlas combines current climate observations, a single-model climate
 outlook, species envelopes and historical country emissions in one map-based
-workflow. It is an exploratory decision-support prototype, not a planting
-prescription, carbon-credit calculator or site-level forecast.
+workflow. Results support early-stage comparison and should be interpreted
+alongside site observations, local datasets and qualified ecological expertise.
 
 ## What It Does
 

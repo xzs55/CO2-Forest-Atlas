@@ -39,7 +39,7 @@ L.tileLayer("https://basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
   maxZoom: 20, attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
 }).addTo(map);
 
-let SPECIES = [], NATIVES = {}, NATURALIZED = {}, NAMES_PT = {}, SOURCING = null, INVASIVES = {}, NATIVES_L3 = {}, L3_REGIONS = {}, NATIVES_GEO = {};
+let SPECIES = [], NATIVES = {}, NATURALIZED = {}, NAMES_PT = {}, INVASIVES = {}, NATIVES_L3 = {}, L3_REGIONS = {}, NATIVES_GEO = {};
 const speciesReady = Promise.all([
   fetch("data/species.json").then(r => r.json()).then(j => { SPECIES = j; }),
   fetch("data/natives.json").then(r => r.json()).then(j => { NATIVES = j; }).catch(() => {}), // optional layer
@@ -132,8 +132,6 @@ const dispName = sp => {
   }
   return sp.common === sp.sci ? `<i>${sp.sci}</i>` : cap(sp.common);
 };
-// what a regional store search box wants: Brazilian vernacular if in BR, else the binomial
-const shopTerm = sp => (current?.cc === "BR" && LANG === "pt" ? localName(sp) : null) ?? sp.sci;
 // plain-text display name (no markup), for the sim pill and exports
 const plainName = sp => {
   if (LANG !== "en") { const n = localName(sp); return n ? cap(n) : sp.sci; }
@@ -712,86 +710,6 @@ const USE_LABELS = { timber: "timber", fruit: "fruit", environmental: "environme
 
 const nativeHere = sp => current.cc && NATIVES[sp.id] ? NATIVES[sp.id].includes(current.cc) : null;
 
-// R$/ha at 3x2 m spacing, Instituto Escolhas 2023 (Tabela 11); each range spans
-// labour arrangements from own workforce to contracted crews
-const COSTS = [
-  ["Natural regeneration management", 2430, 5856],
-  ["Regeneration + enrichment", 6096, 12196],
-  ["Regeneration + densification + enrichment", 10286, 19900],
-  ["Seedling planting, mechanized", 18545, 31059],
-  ["Seedling planting, manual", 19591, 36582],
-  ["Direct seeding, mechanized", 14986, 21213],
-  ["Direct seeding, manual", 14856, 23398],
-];
-const brl = v => v >= 1e6
-  ? `R$ ${(v / 1e6).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}M`
-  : `R$ ${fmt(v)}`;
-// Lei 12.651/2012 Art. 61-A recomposition strips (consolidated areas), metres
-// per margin, by property size in fiscal modules; Art. 61-B caps the total.
-const APP61A = {
-  rios: { "1": 5, "2": 8, "4": 15, "10": 20 },
-  nascentes: { "1": 5, "2": 8, "4": 15, "10": 15 },
-  lagos: { "1": 5, "2": 8, "4": 15, "10": 30 },
-};
-// Resolucao SMA 32/2014 Anexo I "adequado" trajectory + Anexo II gate (year 20)
-const SMA32 = {
-  florestas: { dens: [200, 1000, 2000, 2500, 3000], spp: [3, 10, 20, 25, 30] },
-  cerrado: { dens: [200, 500, 1000, 1500, 2000], spp: [3, 10, 15, 20, 25] },
-};
-const SMA_AGES = [3, 5, 10, 15, 20];
-
-function legalMarkup() {
-  if (current.cc !== "BR") return "";
-  const lg = current.legal ?? (current.legal = { mf: "2", app: "rios", veg: "florestas" });
-  const lrow = (label, key, opts) => `<div class="crit-row">
-    <div class="k">${tr(label)}</div>
-    <div class="opts">${opts.map(([v, txt]) => `<button class="opt${lg[key] === v ? " on constrained" : ""}" data-f="${key}" data-v="${v}">${tr(txt)}</button>`).join("")}</div>
-  </div>`;
-  const width = APP61A[lg.app][lg.mf];
-  const cap = lg.mf === "1" || lg.mf === "2"
-    ? tfmt("Art. 61-B: total recomposition capped at {p}% of the property", { p: 10 })
-    : lg.mf === "4"
-      ? tfmt("Art. 61-B: total recomposition capped at {p}% of the property", { p: 20 })
-      : tr("above 4 MF the 61-B cap does not apply; for rivers, 20 m covers watercourses up to 10 m wide");
-
-  let sma = "";
-  if (/s[aã]o paulo/i.test(current.state)) {
-    const t = SMA32[lg.veg];
-    const rows = SMA_AGES.map((age, i) => {
-      const gate = age === 20;
-      return `<div class="stat${gate ? " wide" : ""}"><span class="sk">${tfmt("{n} years", { n: age })}${gate ? ` &middot; ${tr("sign-off gate (Anexo II)")}` : ""}</span>
-        <span class="sv">&gt;80% &middot; &gt;${fmt(t.dens[i])} ind/ha &middot; &gt;${t.spp[i]} spp</span></div>`;
-    }).join("");
-    const plots = Math.min(50, Math.max(5, Math.ceil(current.ha) + 4));
-    sma = `<div class="section-h">${tr("SMA 32 targets (SP)")}</div>
-      <div class="crit-panel">${lrow("Use", "lveg", [["florestas", "ombrophilous and seasonal forests"], ["cerrado", "cerradao / cerrado stricto sensu"]])}</div>
-      <div class="stats" style="margin-top:0">${rows}</div>
-      <div class="evidence">${tfmt("Plots for this area: {n} of 100 m2 (25 x 4 m). A regenerant counts from 50 cm height with CAP under 15 cm.", { n: plots })}
-        ${tr("Anexo III suggests at least 80 regional native species for full-area planting. It is guidance, not a requirement.")}</div>`;
-  }
-
-  return `<div class="section-h">${tr("Legal &middot; Forest Code")}</div>
-    <div class="crit-panel">
-      ${lrow("Property", "lmf", [["1", "up to 1 MF"], ["2", "1 to 2 MF"], ["4", "2 to 4 MF"], ["10", "over 4 MF"]])}
-      ${lrow("APP type", "lapp", [["rios", "rivers and streams"], ["nascentes", "springs"], ["lagos", "lakes and ponds"]])}
-    </div>
-    <div class="stats" style="margin-top:0">
-      <div class="stat wide"><span class="sk">${tr("Strip to recompose (Art. 61-A)")}</span><span class="sv">${tfmt("{w} m on each margin", { w: width })}</span></div>
-    </div>
-    <div class="evidence">${cap}</div>
-    ${sma}`;
-}
-
-function costsMarkup() {
-  const rows = COSTS.map(([k, lo, hi]) =>
-    `<div class="stat"><span class="sk">${tr(k)}</span><span class="sv" style="white-space:nowrap">${brl(lo)}&ndash;${brl(hi)}/ha</span></div>`).join("");
-  return `<div class="section-h" title="${tr("range across labour arrangements, own workforce to contracted; 2023 prices, 3x2 m spacing")}">${tr("Restoration cost")}</div>
-    <div class="stats" style="margin-top:0">
-      ${rows}
-      <div class="stat wide"><span class="sk">${tr("Seedling planting in this area")}</span><span class="sv">${brl(18545 * current.ha)}&ndash;${brl(36582 * current.ha)}</span></div>
-    </div>`;
-}
-
 // class-level metrics, memoised per growth class
 const MAT_CLS = {}, CROWN_CLS = {};
 const matCls = g => MAT_CLS[g] ??= maturityYears(CLASSES[g]);
@@ -1008,8 +926,8 @@ function renderResults() {
       ${rd(tr("climate class"), site.koppen ? `${site.koppen} <span class="adm">(${tr(KOPPEN_DESCRIPTIONS[site.koppen] ?? site.koppen)})</span>` : tr("n/a"), tr("Köppen-Geiger climate classification (Peel et al. 2007)"))}
     </div>
     <div class="footnote" style="margin-top:10px">
-      ${tr("Suitability follows the FAO EcoCrop model (trapezoidal climate envelopes, most-limiting-factor), for screening, not planting prescriptions.")}
-      <br>${tr("2040 outlook uses one exploratory CMIP6 model projection (MRI_AGCM3_2_S), 2036&ndash;2045. It is not a planting prescription or a forecast.")}
+      ${tr("Suitability uses FAO EcoCrop climate envelopes and the most-limiting-factor method. Interpret scores alongside local site evidence.")}
+      <br>${tr("The 2040 outlook is scenario-based model output (MRI_AGCM3_2_S, 2036&ndash;2045) for comparison with the historical baseline.")}
     </div>`;
 
   const projectsBlock = `
@@ -1019,7 +937,7 @@ function renderResults() {
   const treeBlock = `
     ${critMarkup()}
     <div id="sp-list">${current.q?.trim() ? searchListHtml(searchMatches(current.q)) : rows.map((s, i) => speciesRow(s, i)).join("") || `<div class="sp-empty">${current.nativeOnly
-      ? tr("No natives from our base clear the bar here. The base (FAO EcoCrop) covers cultivated species and thinly covers wild native floras, like this region's; try 'everything', or ask a local restoration nursery.")
+      ? tr("No native species in the current dataset clear this filter. EcoCrop covers cultivated species more fully than many regional wild floras; try 'everything' and consult regional flora records or a local restoration specialist.")
       : tr("Nothing clears the bar for this filter here.")}</div>`}</div>
     ${pool.length > shown && !current.q?.trim() ? `<button class="chip more" data-more>${tfmt("Show {n} more", { n: Math.min(20, pool.length - shown) })}</button>` : ""}
     ${(() => {
@@ -1068,20 +986,6 @@ function renderResults() {
   renderCo2History();
 }
 
-// price band for the row chip: what a muda or seed packet of this costs
-function priceBand(sp) {
-  return null;
-}
-
-function priceBandDisabled(sp) {
-  // Brazilian market data (R$): only meaningful for Brazilian sites,
-  // same gate as the "Where to get it" block
-  if (current?.cc !== "BR") return null;
-  const bands = SOURCING?.bands;
-  if (!bands) return null;
-  const key = bands.porte_band?.[sp.porte] ?? (sp.tree || sp.porte === "shrub" ? "muda_nativa" : "semente_pacote");
-  return bands[key]?.label ?? null;
-}
 const speedWord = sp => !sp.tree ? "" : sp.gclass.endsWith("fast") ? tr("fast-growing") : sp.gclass.endsWith("slow") ? tr("slow-growing") : "";
 
 function speciesRow(s, i) {
@@ -1184,11 +1088,6 @@ content.addEventListener("click", e => {
   const opt = e.target.closest(".opt[data-f]");
   if (opt) {
     const v = opt.dataset.v;
-    if (["lmf", "lapp", "lveg"].includes(opt.dataset.f)) {
-      current.legal[opt.dataset.f === "lmf" ? "mf" : opt.dataset.f === "lapp" ? "app" : "veg"] = v;
-      renderResults(); loadRowPhotos();
-      return;
-    }
     track("filter", { f: opt.dataset.f, v });
     if (opt.dataset.f === "habit") { current.habit = v; current.matMax = null; current.crownMin = null; }
     if (opt.dataset.f === "origin") current.nativeOnly = v === "native";
@@ -1196,13 +1095,6 @@ content.addEventListener("click", e => {
     if (opt.dataset.f === "mat") current.matMax = v ? +v : null;
     if (opt.dataset.f === "crown") current.crownMin = v ? +v : null;
     current.shown = 12; renderResults(); loadRowPhotos(); return;
-  }
-  const srcLink = e.target.closest(".getrows a");
-  if (srcLink) { // the loop's conversion moment: intent became a store visit
-    const spEl = e.target.closest(".sp");
-    const sp = current.scored.find(x => x.sp.id === +(spEl?.dataset.id))?.sp;
-    track("sourcing_click", { shop: new URL(srcLink.href).hostname.replace(/^www\./, ""), sci: sp?.sci });
-    return; // native navigation proceeds (target=_blank)
   }
   const fb = e.target.closest("[data-fb]");
   if (fb) {
@@ -1351,57 +1243,6 @@ function climateSvg(site) {
   </svg>`;
 }
 
-const slugify = t => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-  .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-
-// "Onde conseguir": the first block of the detail, because it is the only fact
-// here that converts intent into action. Everything is country-scoped: shops
-// carry a scope (BR, US, ...), directories a cc; nothing Brazilian leaks abroad.
-function sourcingMarkup(sp) {
-  return "";
-}
-
-function sourcingMarkupDisabled(sp) {
-  if (invasiveHere(sp)) return ""; // never help buy a recorded invasive
-  const cc = current.cc;
-  const shops = (SOURCING?.shops ?? []).filter(sh => sh.scope === cc);
-  const dirs = (SOURCING?.directories ?? []).filter(d => d.cc === cc);
-  if (!shops.length && !dirs.length) return "";
-  // BR searches by vernacular, US by English common name; everywhere else the
-  // stores index botanical names, so the binomial is the term that actually hits
-  const term = cc === "BR" ? shopTerm(sp) : cc === "US" ? (sp.common !== sp.sci ? cap(sp.common) : sp.sci) : sp.sci;
-  const kindWord = sp.tree || sp.porte === "shrub" ? "muda" : "sementes";
-  // verified product links first: only stores that provably stock THIS species
-  const kind = sp.tree || sp.porte === "shrub" ? "muda" : "semente";
-  const prod = SOURCING.products?.[sp.id] ?? {};
-  const direct = shops
-    .map(sh => {
-      const hit = prod[sh.id]?.[kind] ?? prod[sh.id]?.[kind === "muda" ? "semente" : "muda"];
-      return hit ? `<a href="${hit.url}" target="_blank" rel="noopener">${sh.name}${hit.price ? ` <span class="chk">${sh.cur ?? "$"}${hit.price.toLocaleString(LOCALE)}</span>` : ""}</a>` : null;
-    })
-    .filter(Boolean).join(" &middot; ");
-  const links = shops.filter(sh => sh.search).map(sh => {
-    const url = sh.search.includes("{slug}")
-      ? sh.search.replace("{slug}", slugify(`${kindWord} ${term}`))
-      : sh.search.replace("{q}", encodeURIComponent(term));
-    return `<a href="${url}" target="_blank" rel="noopener">${sh.name}</a>`;
-  }).join(" &middot; ");
-  const dirRow = dirs.map(d => `<a href="${d.url}" target="_blank" rel="noopener"${d.note ? ` title="${d.note}"` : ""}>${d.name}</a>`).join(" &middot; ");
-  const band = priceBand(sp);
-  const horto = (SOURCING.hortos || []).find(h =>
-    h.municipio && current.city && h.municipio.localeCompare(current.city, "pt", { sensitivity: "base" }) === 0);
-  const nets = (SOURCING.networks || []).filter(n => current.uf && (n.uf || []).includes(current.uf)).slice(0, 2);
-  return `<div class="section-h">${tr("Where to get it")}</div>
-    <div class="stats getrows" style="margin-top:0">
-      ${horto ? `<div class="stat wide"><span class="sk gfree">${tr("free")}</span><span class="sv"><a href="${horto.url}" target="_blank" rel="noopener">${horto.name}</a>${horto.limit ? ` &middot; ${tfmt("up to {n} seedlings", { n: horto.limit })}` : ""}${horto.scope === "quintal" ? ` &middot; ${tr("for planting on your own property")}` : ""}</span></div>` : ""}
-      ${direct ? `<div class="stat wide"><span class="sk">${tr("buy")}</span><span class="sv">${direct}</span></div>` : ""}
-      ${links ? `<div class="stat wide"><span class="sk">${tr("search stores")}</span><span class="sv">${links}</span></div>` : ""}
-      ${dirRow ? `<div class="stat wide"><span class="sk">${tr("find a nursery")}</span><span class="sv">${dirRow}</span></div>` : ""}
-      ${nets.length ? `<div class="stat wide"><span class="sk">${tr("seed networks")}</span><span class="sv">${nets.map(n => `<a href="${n.url}" target="_blank" rel="noopener">${n.name}</a>`).join(" &middot; ")}</span></div>` : ""}
-      ${band ? `<div class="stat wide"><span class="sk">${tr("typical price")}</span><span class="sv">${band}${SOURCING.bands?.checked ? ` <span class="chk">(${SOURCING.bands.checked})</span>` : ""}</span></div>` : ""}
-    </div>`;
-}
-
 function speciesDetail(id) {
   const s = current.scored.find(x => x.sp.id === id);
   const { sp } = s;
@@ -1452,7 +1293,6 @@ function speciesDetail(id) {
     <div class="sp-photo" data-hero="${sp.id}" hidden></div>
     <div class="sp-meta"><span class="grade">${tr(grade(s.score))}</span><span class="sep">&middot;</span>${tfmt("{rate} growth &middot; {zone}", { rate: tr(rate), zone: tr(zone) })}</div>
     <div class="sp-uses">${sp.wet ? `<span class="it wet" title="${tr("Needs standing water or saturated soil year-round (EcoCrop drainage)")}">${tr("wetland")}</span>` : ""}${sp.uses.map(u => `<span class="it">${tr(USE_LABELS[u] ?? u)}</span>`).join("")}</div>
-    ${sourcingMarkup(sp)}
     ${sp.tree ? `<div class="growth-fig">${growthSvg(sp)}
       <div class="fig-cap">${tfmt("Reaches ~95% of its max height in ~{n} years (class-level model).", { n: fmt(mat) })}</div>
     </div>` : ""}
@@ -2857,12 +2697,12 @@ map.getContainer().addEventListener("drop", e => {
   if (e.dataTransfer?.files?.[0]) importGeometryFile(e.dataTransfer.files[0]);
 });
 
-// brand popover: what this is, who made it, where the code lives
+// Brand popover: concise scope and data principles.
 const brandEl = document.querySelector(".brand");
 const aboutEl = $("#about");
 aboutEl.innerHTML = `
   <p>${tr("Draw an area anywhere on Earth: CO2 Forest Atlas compares current forest suitability, a 2040 climate outlook, and historical CO2 emissions context. Open data, open model.")}</p>
-  <p class="about-links">${tr("Built on the MIT-licensed Replantio engine; product direction and interface adapted for CO2 Forest Atlas.")}</p>`;
+  <p class="about-links">${tr("Open data · transparent assumptions · local-first analysis")}</p>`;
 brandEl.addEventListener("click", () => { aboutEl.hidden = !aboutEl.hidden; });
 document.addEventListener("click", e => {
   if (!aboutEl.hidden && !e.target.closest(".brand") && !e.target.closest("#about")) aboutEl.hidden = true;
