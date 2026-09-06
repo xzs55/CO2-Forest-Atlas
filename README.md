@@ -1,7 +1,12 @@
 # CO2 Forest Atlas
 
+![CO2 Forest Atlas interface](assets/preview.png)
+
 An interactive geospatial screening tool for exploring tree-species climate
 suitability, 2040 resilience and carbon context for a selected area.
+
+**Topics:** `climate-resilience` · `geospatial-analysis` · `forest-restoration` ·
+`carbon-modeling` · `climate-data` · `open-data` · `vite` · `leaflet`
 
 CO2 Forest Atlas combines current climate observations, a single-model climate
 outlook, species envelopes and historical country emissions in one map-based
@@ -20,10 +25,6 @@ alongside site observations, local datasets and qualified ecological expertise.
 Carbon results are deliberately shown as low-to-high screening ranges. Their
 current confidence is `low · class-level` because the model uses growth classes,
 generic allometry and fixed stand assumptions rather than local measurements.
-
-## Preview
-
-![CO2 Forest Atlas interface](assets/preview.png)
 
 ## How It Works
 
@@ -56,8 +57,9 @@ npm test
 npm run build
 ```
 
-The production files are generated in `dist/`. This repository does not include
-an automatic public-web deployment workflow.
+The production files are generated in `dist/`. Every push to `main` runs the
+test suite, builds the application and deploys `dist/` to GitHub Pages through
+the workflow in `.github/workflows/deploy-pages.yml`.
 
 ## Data and Models
 
