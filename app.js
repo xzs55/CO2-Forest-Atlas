@@ -415,17 +415,81 @@ function polyCentroid(pts) {
 async function fetchClimate(c, signal) {
   const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${c.lat.toFixed(4)}&longitude=${c.lng.toFixed(4)}` +
     `&start_date=2015-01-01&end_date=2024-12-31&daily=temperature_2m_mean,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration,shortwave_radiation_sum,relative_humidity_2m_mean,cloud_cover_mean&timezone=auto`;
-  const j = await cachedJson(`climate:${c.lat.toFixed(4)},${c.lng.toFixed(4)}:2015-2024`, url, signal);
-  if (!j.daily?.time?.length) throw new Error(j.reason || "no climate data");
-  return j;
+  try {
+    const j = await cachedJson(`climate:${c.lat.toFixed(4)},${c.lng.toFixed(4)}:2015-2024`, url, signal,
+      1000 * 60 * 60 * 24 * 14, 6000);
+    if (!j.daily?.time?.length) throw new Error(j.reason || "no climate data");
+    return { ...j, climateSource: "ERA5 2015–2024" };
+  } catch (e) {
+    if (signal.aborted) throw e;
+  }
+
+  // Open-Meteo is occasionally unreachable from some networks. NASA POWER's
+  // precomputed monthly climatology is small, CORS-enabled and independent, so
+  // it keeps the core species screening usable without inventing local values.
+  const powerUrl = `https://power.larc.nasa.gov/api/temporal/climatology/point?latitude=${c.lat.toFixed(4)}&longitude=${c.lng.toFixed(4)}` +
+    `&community=AG&parameters=T2M,T2M_MIN,PRECTOTCORR,ALLSKY_SFC_SW_DWN,RH2M&format=JSON`;
+  const power = await cachedJson(`climate:power:${c.lat.toFixed(4)},${c.lng.toFixed(4)}:2001-2020`, powerUrl, signal,
+    1000 * 60 * 60 * 24 * 30, 15000);
+  return powerClimate(power);
 }
 
-async function cachedJson(key, url, signal, maxAgeMs = 1000 * 60 * 60 * 24 * 14) {
+function powerClimate(j) {
+  const p = j.properties?.parameter;
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const values = (name) => months.map(m => p?.[name]?.[m]);
+  const tavg = values("T2M"), tmin = values("T2M_MIN"), rainDay = values("PRECTOTCORR");
+  if ([...tavg, ...tmin, ...rainDay].some(v => !Number.isFinite(v) || v <= -900)) {
+    throw new Error("NASA POWER returned incomplete climate data");
+  }
+  const solar = values("ALLSKY_SFC_SW_DWN");
+  const humidity = values("RH2M");
+  return {
+    climateSource: "NASA POWER 2001–2020",
+    climateFallback: true,
+    elevation: j.geometry?.coordinates?.[2] ?? null,
+    daily: {
+      time: months.map((_, i) => `2001-${String(i + 1).padStart(2, "0")}-15`),
+      temperature_2m_mean: tavg,
+      temperature_2m_min: tmin,
+      precipitation_sum: rainDay.map((v, i) => v * days[i]),
+      // POWER supplies kWh/m²/day; aggregateClimate expects Open-Meteo's MJ/m²/day.
+      shortwave_radiation_sum: solar.map(v => Number.isFinite(v) && v > -900 ? v * 3.6 : null),
+      relative_humidity_2m_mean: humidity.map(v => Number.isFinite(v) && v > -900 ? v : null),
+    },
+  };
+}
+
+async function fetchJson(url, signal, timeoutMs = 20000) {
+  // A stalled upstream connection used to leave the analysis panel on its
+  // loading state indefinitely. Use a separate controller so a timeout does
+  // not poison the caller's controller (which still owns the optional layers).
+  const ctl = new AbortController();
+  const onAbort = () => ctl.abort(signal?.reason);
+  signal?.addEventListener("abort", onAbort, { once: true });
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctl.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    if (ctl.signal.aborted && !signal?.aborted) {
+      throw new Error(`Climate service did not respond within ${Math.round(timeoutMs / 1000)} seconds`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+async function cachedJson(key, url, signal, maxAgeMs = 1000 * 60 * 60 * 24 * 14, timeoutMs = 20000) {
   try {
     const cached = await idbGet(key);
     if (cached && Date.now() - cached.t < maxAgeMs) return cached.v;
   } catch {}
-  const j = await (await fetch(url, { signal })).json();
+  const j = await fetchJson(url, signal, timeoutMs);
   try { await idbSet(key, { t: Date.now(), v: j }); } catch {}
   return j;
 }
@@ -577,7 +641,9 @@ async function analyze(pts) {
   if (ctl.signal.aborted) return;
 
   await speciesReady;
-  const site = { ...agg, ph: soil?.ph ?? soil?.phh2o ?? null, soil: soil ?? null, lat: c.lat, elevation: clim.elevation, place: place?.label ?? null, terrain };
+  const site = { ...agg, ph: soil?.ph ?? soil?.phh2o ?? null, soil: soil ?? null, lat: c.lat, elevation: clim.elevation,
+    climateSource: clim.climateSource ?? "ERA5 2015–2024", climateFallback: !!clim.climateFallback,
+    place: place?.label ?? null, terrain };
   if (terrain && terrain.slope >= 1.5 && terrain.aspectDeg != null && agg.rad != null) {
     const monthlyFactors = monthlySlopeSolarFactors(c.lat, terrain.slope, terrain.aspectDeg);
     // annual factor weighted by each month's flat-plane insolation: a plain
@@ -906,7 +972,7 @@ function renderResults() {
   const atlasBlock = atlasBriefMarkup(pool);
 
   const whyBlock = `
-    <div class="section-h">${tr("Site climate &middot; ERA5 2015&ndash;2024")}</div>
+    <div class="section-h">${site.climateFallback ? `Site climate &middot; ${site.climateSource}` : tr("Site climate &middot; ERA5 2015&ndash;2024")}</div>
     <div class="site-fig">${climateSvg(site)}</div>
     <div class="site-adjust">
       <label><input type="checkbox" data-ov-irr${site.irrigated ? " checked" : ""}> ${tr("irrigated")}</label>
@@ -974,6 +1040,7 @@ function renderResults() {
     <div class="footnote">
       ${tr("Data:")} <a href="https://gaez.fao.org/pages/ecocrop" target="_blank">FAO EcoCrop</a> &middot;
       <a href="https://open-meteo.com/" target="_blank">Open-Meteo ERA5</a> &middot;
+      ${site.climateFallback ? '<a href="https://power.larc.nasa.gov/" target="_blank">NASA POWER</a> &middot;' : ""}
       <a href="https://soilgrids.org/" target="_blank">SoilGrids 2.0, ISRIC (CC-BY 4.0)</a> &middot;
       <a href="https://www.gbif.org/" target="_blank">GBIF</a> &middot;
       <a href="https://powo.science.kew.org/" target="_blank">WCVP v16, RBG Kew (CC BY 3.0)</a> &middot;
